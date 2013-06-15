@@ -1,0 +1,106 @@
+body {
+    font-family:sans-serif;
+    font-size:13px;
+}
+
+a:link, a:visited {
+    color:#555555;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:hover, a:active {
+    color:#888888;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+h1 {
+    font-size:1.5em;
+    margin:0.3em 0 0.3em;
+}
+
+h2 {
+    font-size:1.2em;
+    margin:0.3em 0 0.3em;
+}
+
+textarea {
+    font-size:11px;
+    font-family:monospace;
+    width:100%;
+    height:30em;
+    margin:0px;
+    padding:5px;
+    border:none;
+    resize:none;
+    box-sizing:border-box;
+}
+
+input.text, select.text {
+    width:30%;
+}
+
+form {
+    width:50em;
+    padding:0.5em 1em 0.5em;
+}
+
+p.input {
+    height:1.6em;
+}   
+
+label.inputlabel {
+    width:15%;
+    height:100%;
+    line-height:1.6em;
+    float:left;
+}
+
+select.text, input.text {
+    padding-right:3px;
+}
+
+input.text, select.text {
+    font-size:11px;
+}
+
+p.framed {
+    padding:0.5em;
+}
+
+form, input.text, select.text, textarea, .framed {
+    border:1px solid #ccccdd;
+    border-radius:4px;
+    background:#ffffff;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline:none;
+}
+
+input.text:focus, select.text:focus, textarea.text:focus {
+    border:1px solid #ccccff;
+    background:#f7f7ff;
+}
+
+pre {
+    font-size:11px;
+    font-family:monospace;
+    border:1px solid #ccccdd;
+    border-radius:4px;
+    background:#f7f7ff;
+    padding:6px;
+    overflow:hidden;
+    zoom:1;
+}
+
+.linenumbers {
+    text-align:right;
+    float:left;
+    font-family:monospace;
+    font-size:11px;
+    padding:7px 0px 0px 0;
+    margin-right:0.3em;
+}
+
