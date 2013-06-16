@@ -1,3 +1,5 @@
+module Main (main) where
+
 import Network.CGI
 import System.Directory
 import System.Random

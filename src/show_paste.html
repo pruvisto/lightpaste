@@ -13,15 +13,18 @@ hljs.initHighlightingOnLoad();
 </script>
 </head>
 <body>
-<h1>Paste "%{title}" by <em>%{author}</em></h1>
-<h2>Time of creation: %{time}</h2>
-<div class="framed" style="padding:0px 5px 0px;width:100%;box-sizing: border-box;">
-<p style="margin-left:0.5em">
-<a href="%{root}%{id}">Permalink</a>&nbsp;|&nbsp;<a href="%{root}plain/%{id}">Plain text</a>&nbsp;|&nbsp;<a href="%{root}clone/%{id}">Clone this paste</a>&nbsp;|&nbsp;<a href="%{root}">New paste</a>
-</p>
-<div class="linenumbers">%{line_numbers}</div>
+<h1>Shodan Pasting Service</h1>
+<h2>Paste "%{title}" by <em>%{author}</em></h2>
+<h3>Time of creation: %{time}</h3>
+<div class="framed" style="padding:0px 5px 0px;width:100%;box-sizing: border-box;margin-top:1em">
+<ul class="menu" style="margin:0.4em 0 0 0.4em">
+<li class="menu"><a href="%{root}%{id}">Permalink</a></li>
+<li class="menu"><a href="%{root}plain/%{id}">Plain text</a></li>
+<li class="menu"><a href="%{root}clone/%{id}">Clone this paste</a></li>
+<li class="menu"><a href="%{root}">New paste</a></li>
+</ul>
+<p class="linenumbers">%{line_numbers}</p   >
 <pre><code class="%{highlighting}" style="margin:0;padding:0">%{content}</code></pre>
 </div>
 </body>
-<div style="height:5em"></div>
 </html>
