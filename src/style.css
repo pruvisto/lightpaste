@@ -110,7 +110,7 @@ input.text:focus, select.text:focus, textarea.text:focus {
     unicode-range:U+0-FFFFFFFF;
 }
 
-pre, .linenumbers, code {
+pre, code {
     font-family:isabelletext,monospace;
     font-size:11px;
     line-height:15px;
@@ -120,7 +120,7 @@ pre {
     border:1px solid #ccccdd;
     border-radius:4px;
     background:#f7f7ff;
-    padding:6px;
+    padding: 6px 6px 6px 0;
     overflow:hidden;
 }
 
@@ -128,20 +128,38 @@ sup {
     vertical-align: top;
     font-size: 0.4em;
     position: relative;
-    top: -0.5em;
+    top: -0.4em;
 }
 
 sub {
     vertical-align: bottom;
     font-size: 0.4em;
     position: relative;
-    bottom: -0.5em;
+    bottom: -0.4em;
 }
 
-.linenumbers {
-    text-align:right;
-    float:left;
-    padding:7px 0px 0px 0;
-    margin-right:0.3em;
+pre {
+    margin: 0.5em 0.5em 1em 0.5em;
+	counter-reset: linecounter;
 }
 
+span.line:before {
+	counter-increment: linecounter;
+    font-family: monospace;
+    font-size: 8px;
+    color: #666666;
+	content: counter(linecounter);
+	padding-right:0.4em;
+	margin-left:0.2em;
+	margin-right:0.5em;
+	display: inline-block;
+	text-align:right;
+	border-right: 1px solid #ccccdd;
+	vertical-align: top;
+	-webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}

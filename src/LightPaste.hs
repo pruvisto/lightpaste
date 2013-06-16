@@ -10,16 +10,19 @@ import qualified Data.ByteString.Lazy.Search as BSS
 import Control.Applicative
 import Data.Time
 import IsabelleTokens
+import Text.Printf (printf)
 
 
 pasteDir = "/var/pastes/"
 webRoot = "/paste/"
+isaTokenFile = "isatokens"
 
 
 globalTemplateSubsts = [(SBS.pack "%{root}", BS.pack webRoot)]
 
 data Paste = Paste {title :: String, author :: String, highlighting :: String,
-                    time :: UTCTime, content :: BS.ByteString}
+                    time :: UTCTime, content :: BS.ByteString, 
+                    lineNumberWidth :: Int}
                     
 highlightings = ["","bash","brainfuck","clojure","cmake","coffeescript","cpp","cs","css","delphi",
                  "diff","django","d","dos","erlang","fsharp","glsl","go","haskell","http","ini",
@@ -31,52 +34,75 @@ highlightingNames = ["None","Bash","Brainfuck","Clojure","CMake","CoffeeScript",
                  "Java","JavaScript","JSON","Lisp","Lua","Matlab","Mizar","ObjectiveC","Perl",
                  "PHP","Python","R","Ruby","Scala","Smalltalk","SQL","TeX","Vala","VBnet",
                  "VBScript","VHDL","XML/HTML"]
+
                  
 ensureValidHighlighting hl = if hl `elem` highlightings then hl else ""
                     
 firstLine s = case lines s of {[] -> ""; l:_ -> l}
                     
-mkPaste title author hl time content = Paste title' author' hl' time content
+mkPaste' title author hl time content lineNumberWidth = Paste title' author' hl' time content lineNumberWidth
     where title' = firstLine title
           author' = firstLine author
           hl' = ensureValidHighlighting hl
           
-pasteSubsts isaTokenMap paste = 
+mkPaste title author hl time content = mkPaste' title author hl time content
+                                           (length $ show $ BS.count '\n'  content)
+          
+pasteSubsts highlightScript paste = 
     [("title", escapeHtml $ BS.pack $ title paste),
      ("author", escapeHtml $ BS.pack $ author paste), 
-     ("highlighting", BS.pack $ highlighting paste),
+     ("highlighting", BS.pack $ (if null (highlighting paste) then "" 
+                                 else " class=\"" ++ highlighting paste ++ "\"")),
      ("time", escapeHtml $ BS.pack $ show $ time paste), 
-     ("content", case isaTokenMap of
-                     Just m -> if highlighting paste == "isabelle" then
-                                   IsabelleTokens.replaceTokens m $ escapeHtml $ content paste
-                               else
-                                   escapeHtml $ content paste
-                     Nothing -> escapeHtml $ content paste),
-     ("line_numbers", genLineNumbers (content paste))]
+     ("content", content paste),
+     ("line_number_width", BS.pack $ printf "%.1fem" $
+         fromIntegral (lineNumberWidth paste) * (0.7::Double)),
+     ("highlight_script", if null (highlighting paste) then BS.empty else highlightScript)]
 
-pasteToByteString (Paste title author highlighting time content) =
-    BS.append (BS.pack (title ++ "\n" ++ author ++ "\n" ++ 
-                      highlighting ++ "\n" ++ show time ++ "\n")) content
+pasteMetadataToByteString (Paste title author highlighting time content lineNumberWidth) =
+    BS.pack (title ++ "\n" ++ author ++ "\n" ++ 
+             highlighting ++ "\n" ++ show time ++ "\n" ++ show lineNumberWidth)
 
-splitOffLines :: Int -> BS.ByteString -> ([BS.ByteString], BS.ByteString)
-splitOffLines n bs = case (splitOffLines' n ([], bs)) of (xs,bs) -> (reverse xs,bs)
-    where splitOffLines' 0 s = s
-          splitOffLines' n (xs,bs) =
-              case BS.break isLineSep bs of
-                  (x,bs) -> let bs' = BS.drop 1 bs
-                             in splitOffLines' (n-1) (x:xs, bs')
-          isLineSep c = c == '\n' || c == '\r'
+byteStringToPaste bs1 bs2 = mkPaste' title author highlighting (read time) 
+                                bs2 (read lineNumberWidth)
+    where title:author:highlighting:time:lineNumberWidth:_ = 
+              map BS.unpack (BS.lines bs1) ++ repeat ""
 
-byteStringToPaste bs = mkPaste title author highlighting (read time) content
-    where (header, content) = splitOffLines 4 bs
-          [title, author, highlighting, time] = map BS.unpack header
+loadPaste path = 
+    do  bs1 <- BS.readFile path
+        bs2 <- BS.readFile (path ++ "_content")
+        return (byteStringToPaste bs1 bs2)
+        
+loadProcessedPaste path = 
+    do  bs1 <- BS.readFile path
+        bs2 <- BS.readFile (path ++ "_processed")
+        return (byteStringToPaste bs1 bs2)
 
-loadPaste path = byteStringToPaste <$> BS.readFile path
+savePaste path paste = 
+    do BS.writeFile path (pasteMetadataToByteString paste)
+       BS.writeFile (path ++ "_content") (content paste)
+       saveProcessedPaste path paste
+       
+processContent isaTokenMap highlighting bs = 
+    BS.unlines $ map (\l -> BS.concat [bsLineSpan1, l, bsLineSpan2]) $
+        BS.lines $ BS.filter (/='\r') $
+        case isaTokenMap of
+            Just m -> if highlighting == "isabelle" then
+                          IsabelleTokens.replaceTokens m $ escapeHtml $ bs
+                      else
+                          escapeHtml $ bs
+            Nothing -> escapeHtml $ bs
+    where bsLineSpan1 = BS.pack "<span class=\"line\">"
+          bsLineSpan2 = BS.pack "</span>"
 
-savePaste path paste = BS.writeFile path (pasteToByteString paste)
+saveProcessedPaste path paste = 
+    do isaTokenMap <- if highlighting paste == "isabelle" then
+                          IsabelleTokens.buildTokenMap isaTokenFile
+                      else
+                          return Nothing
+       let bs = processContent isaTokenMap (highlighting paste) (content paste)
+       BS.writeFile (path ++ "_processed") bs
 
-genLineNumbers t = BS.intercalate (BS.pack "<br/>") (map (BS.pack . show) [1..n])
-    where n = length (BS.lines t)
     
 genHighlightingOptions sel = BS.concat $ zipWith go highlightings highlightingNames
     where go hl hln = BS.pack $ "<option value=\"" ++ hl ++ "\"" ++ 
@@ -145,16 +171,16 @@ showPaste id
            if not ex then
                showCreatePasteForm Nothing
            else do
-               paste <- liftIO (loadPaste pastePath)
-               let bs = content paste
                plain <- getInputOption "plain"
                if plain then do
+                   bs <- liftIO (BS.readFile (pastePath ++ "_content"))
                    setHeader "Content-type" "text/plain; charset=utf-8"
                    outputFPS bs
                else do
-                   isaTokenMap <- liftIO (IsabelleTokens.buildTokenMap "isatokens")
+                   paste <- liftIO (loadProcessedPaste pastePath)
+                   hlScript <- readTemplate "highlight_script" []
                    html <- readTemplate "show_paste" 
-                               (("id", BS.pack id) : pasteSubsts isaTokenMap paste)
+                               (("id", BS.pack id) : pasteSubsts hlScript paste)
                    setHeader "Content-type" "text/html; charset=utf-8"
                    outputFPS html
                    
