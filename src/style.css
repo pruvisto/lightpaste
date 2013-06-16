@@ -70,7 +70,7 @@ p.input {
 }   
 
 label.inputlabel {
-    width:15%;
+    min-width:15%;
     height:100%;
     line-height:1.6em;
     float:left;
@@ -103,22 +103,44 @@ input.text:focus, select.text:focus, textarea.text:focus {
     background:#f7f7ff;
 }
 
-pre {
+
+@font-face {
+    font-family:isabelletext;
+    src:url('../isabelletext.ttf') format("truetype");
+    unicode-range:U+0-FFFFFFFF;
+}
+
+pre, .linenumbers, code {
+    font-family:isabelletext,monospace;
     font-size:11px;
-    font-family:monospace;
+    line-height:15px;
+}
+
+pre {
     border:1px solid #ccccdd;
     border-radius:4px;
     background:#f7f7ff;
     padding:6px;
     overflow:hidden;
-    zoom:1;
+}
+
+sup {
+    vertical-align: top;
+    font-size: 0.4em;
+    position: relative;
+    top: -0.5em;
+}
+
+sub {
+    vertical-align: bottom;
+    font-size: 0.4em;
+    position: relative;
+    bottom: -0.5em;
 }
 
 .linenumbers {
     text-align:right;
     float:left;
-    font-family:monospace;
-    font-size:11px;
     padding:7px 0px 0px 0;
     margin-right:0.3em;
 }

@@ -4,16 +4,16 @@
 <head>
 <title>Shodan Pasting Service</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="%{root}style.css">
+<link rel="stylesheet" type="text/css" href="%{root}style.css" />
 </head>
 <body>
 <h1>Shodan Pasting Service</h1>
 <h2>Create new paste</h2>
-<form method="POST" action="%{root}" style="margin-top:1em">
-<p class="input"><label for="title" class="inputlabel">Title:</label><input type="text" name="title" class="text" value="%{title}"></input></p>
-<p class="input"><label for="author" class="inputlabel">Author:</label><input type="text" name="author" class="text"></input></p>
+<form method="post" action="%{root}" accept-charset="utf-8" style="margin-top:1em">
+<p class="input"><label for="title" class="inputlabel">Title:</label><input type="text" id="title" name="title" class="text" value="%{title}"></input></p>
+<p class="input"><label for="author" class="inputlabel">Author:</label><input type="text" id="author" name="author" class="text"></input></p>
 <p class="input"><label for="highlighting" class="inputlabel">Highlighting:</label>
-<select class="text" name="highlighting">%{highlightings}</select></p>
+<select class="text" id="highlighting" name="highlighting">%{highlightings}</select></p>
 <div style="margin-top: 1em; margin-bottom: 0.5em">
 <p class="textareacontainer"><textarea name="paste" class="text" style="font-family:monospace">%{content}</textarea></p></div>
 <p class="input"><input type="submit" name="submit" value="Submit"></input></p>
