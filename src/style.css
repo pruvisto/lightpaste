@@ -144,11 +144,11 @@ pre {
 }
 
 span.line:before {
+	content: counter(linecounter);
 	counter-increment: linecounter;
     font-family: monospace;
     font-size: 8px;
     color: #666666;
-	content: counter(linecounter);
 	padding-right:0.4em;
 	margin-left:0.2em;
 	margin-right:0.5em;
@@ -156,6 +156,9 @@ span.line:before {
 	text-align:right;
 	border-right: 1px solid #ccccdd;
 	vertical-align: top;
+}
+
+span.line:before {
 	-webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -163,3 +166,4 @@ span.line:before {
     -ms-user-select: none;
     user-select: none;
 }
+

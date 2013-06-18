@@ -3,6 +3,7 @@ module Main (main) where
 import Network.CGI
 import System.Directory
 import System.Random
+import qualified System.Cmd (rawSystem)
 import Data.Char
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.ByteString.Char8 as SBS
@@ -16,6 +17,7 @@ import Text.Printf (printf)
 pasteDir = "/var/pastes/"
 webRoot = "/paste/"
 isaTokenFile = "isatokens"
+autoTouchFiles = False
 
 
 globalTemplateSubsts = [(SBS.pack "%{root}", BS.pack webRoot)]
@@ -27,12 +29,12 @@ data Paste = Paste {title :: String, author :: String, highlighting :: String,
 highlightings = ["","bash","brainfuck","clojure","cmake","coffeescript","cpp","cs","css","delphi",
                  "diff","django","d","dos","erlang","fsharp","glsl","go","haskell","http","ini",
                  "isabelle", "java","javascript","json","lisp","lua","matlab","mizar","objectivec","perl",
-                 "php","python","r","ruby","scala","smalltalk","sql","tex","vala","vbnet",
+                 "php","python","r","ruby","scala","smalltalk","sml","sql","tex","vala","vbnet",
                  "vbscript","vhdl","xml"]
 highlightingNames = ["None","Bash","Brainfuck","Clojure","CMake","CoffeeScript","C++","C#","CSS","Delphi",
                  "diff","Django","D","DOS","Erlang","F#","GLSL","GO","Haskell","HTTP","INI","Isabelle",
                  "Java","JavaScript","JSON","Lisp","Lua","Matlab","Mizar","ObjectiveC","Perl",
-                 "PHP","Python","R","Ruby","Scala","Smalltalk","SQL","TeX","Vala","VBnet",
+                 "PHP","Python","R","Ruby","Scala","Smalltalk","Standard ML","SQL","TeX","Vala","VBnet",
                  "VBScript","VHDL","XML/HTML"]
 
                  
@@ -68,6 +70,8 @@ byteStringToPaste bs1 bs2 = mkPaste' title author highlighting (read time)
     where title:author:highlighting:time:lineNumberWidth:_ = 
               map BS.unpack (BS.lines bs1) ++ repeat ""
 
+touchFile path = System.Cmd.rawSystem "touch" [path]
+
 loadPaste path = 
     do  bs1 <- BS.readFile path
         bs2 <- BS.readFile (path ++ "_content")
@@ -75,8 +79,15 @@ loadPaste path =
         
 loadProcessedPaste path = 
     do  bs1 <- BS.readFile path
-        bs2 <- BS.readFile (path ++ "_processed")
-        return (byteStringToPaste bs1 bs2)
+        ex <- doesFileExist (path ++ "_processed")
+        if ex then do
+            bs2 <- BS.readFile (path ++ "_processed")
+            return (byteStringToPaste bs1 bs2)
+        else do
+            bs2 <- BS.readFile (path ++ "_content")
+            bs2' <- doProcessContent (byteStringToPaste bs1 bs2)
+            BS.writeFile (path ++ "_processed") bs2'
+            return (byteStringToPaste bs1 bs2')
 
 savePaste path paste = 
     do BS.writeFile path (pasteMetadataToByteString paste)
@@ -84,23 +95,25 @@ savePaste path paste =
        saveProcessedPaste path paste
        
 processContent isaTokenMap highlighting bs = 
-    BS.unlines $ map (\l -> BS.concat [bsLineSpan1, l, bsLineSpan2]) $
-        BS.lines $ BS.filter (/='\r') $
+    BS.unlines $ map processLine $ BS.lines $ BS.filter (/='\r') $
         case isaTokenMap of
             Just m -> if highlighting == "isabelle" then
                           IsabelleTokens.replaceTokens m $ escapeHtml $ bs
                       else
                           escapeHtml $ bs
             Nothing -> escapeHtml $ bs
-    where bsLineSpan1 = BS.pack "<span class=\"line\">"
-          bsLineSpan2 = BS.pack "</span>"
+    where bsLineSpan = BS.pack "<span class=\"line\"></span>"
+          processLine l = BS.append bsLineSpan l
 
-saveProcessedPaste path paste = 
+doProcessContent paste = 
     do isaTokenMap <- if highlighting paste == "isabelle" then
                           IsabelleTokens.buildTokenMap isaTokenFile
                       else
                           return Nothing
-       let bs = processContent isaTokenMap (highlighting paste) (content paste)
+       return $ processContent isaTokenMap (highlighting paste) (content paste)
+
+saveProcessedPaste path paste = 
+    do bs <- doProcessContent paste
        BS.writeFile (path ++ "_processed") bs
 
     
@@ -172,6 +185,7 @@ showPaste id
                showCreatePasteForm Nothing
            else do
                plain <- getInputOption "plain"
+               if autoTouchFiles then liftIO (touchFile pastePath) >> return () else return ()
                if plain then do
                    bs <- liftIO (BS.readFile (pastePath ++ "_content"))
                    setHeader "Content-type" "text/plain; charset=utf-8"
