@@ -1,0 +1,69 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<title>Shodan Pasting Service</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="/paste/style.css" />
+</head>
+<body>
+<h1>Shodan Pasting Service</h1>
+<h2>Create new paste</h2>
+<form method="post" action="/paste/new" accept-charset="utf-8" style="margin-top:1em">
+<p class="input"><label for="title" class="inputlabel">Title:</label><input type="text" id="title" name="title" class="text" value=""></input></p>
+<p class="input"><label for="author" class="inputlabel">Author:</label><input type="text" id="author" name="author" class="text"></input></p>
+<p class="input"><label for="highlighting" class="inputlabel">Highlighting:</label>
+<select class="text" id="highlighting" name="highlighting"><option value="">None</option>
+<option value="bash">Bash</option>
+<option value="brainfuck">Brainfuck</option>
+<option value="clojure">Clojure</option>
+<option value="cmake">CMake</option>
+<option value="coffeescript">CoffeeScript</option>
+<option value="cpp">C++</option>
+<option value="cs">C#</option>
+<option value="css">CSS</option>
+<option value="delphi">Delphi</option>
+<option value="diff">diff</option>
+<option value="django">Django</option>
+<option value="d">D</option>
+<option value="dos">DOS</option>
+<option value="erlang">Erlang</option>
+<option value="fsharp">F#</option>
+<option value="glsl">GLSL</option>
+<option value="go">GO</option>
+<option value="haskell">Haskell</option>
+<option value="http">HTTP</option>
+<option value="ini">INI</option>
+<option value="isabelle">Isabelle</option>
+<option value="java">Java</option>
+<option value="javascript">JavaScript</option>
+<option value="json">JSON</option>
+<option value="lisp">Lisp</option>
+<option value="lua">Lua</option>
+<option value="matlab">Matlab</option>
+<option value="mizar">Mizar</option>
+<option value="objectivec">ObjectiveC</option>
+<option value="perl">Perl</option>
+<option value="php">PHP</option>
+<option value="python">Python</option>
+<option value="r">R</option>
+<option value="ruby">Ruby</option>
+<option value="scala">Scala</option>
+<option value="smalltalk">Smalltalk</option>
+<option value="sml">Standard ML</option>
+<option value="sql">SQL</option>
+<option value="tex">TeX</option>
+<option value="vala">Vala</option>
+<option value="vbnet">VBnet</option>
+<option value="vbscript">VBScript</option>
+<option value="vhdl">VHDL</option>
+<option value="xml">XML/HTML</option>
+</select></p>
+<div style="margin-top: 1em; margin-bottom: 0.5em">
+<p class="textareacontainer"><textarea name="paste" class="text" style="font-family:monospace"></textarea></p></div>
+<p class="input"><input type="submit" name="submit" value="Submit"></input></p>
+</form>
+</body>
+</html>
+

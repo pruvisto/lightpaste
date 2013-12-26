@@ -16,6 +16,7 @@ import Text.Printf (printf)
 
 pasteDir = "/var/pastes/"
 webRoot = "/paste/"
+webDir = "/var/www" ++ webRoot
 isaTokenFile = "isatokens"
 autoTouchFiles = False
 
@@ -49,6 +50,9 @@ mkPaste' title author hl time content lineNumberWidth = Paste title' author' hl'
           
 mkPaste title author hl time content = mkPaste' title author hl time content
                                            (length $ show $ BS.count '\n'  content)
+
+setContent (Paste title author hl time _ lineNumberWidth) content =
+    Paste title author hl time content lineNumberWidth
           
 pasteSubsts highlightScript paste = 
     [("title", escapeHtml $ BS.pack $ title paste),
@@ -70,29 +74,28 @@ byteStringToPaste bs1 bs2 = mkPaste' title author highlighting (read time)
     where title:author:highlighting:time:lineNumberWidth:_ = 
               map BS.unpack (BS.lines bs1) ++ repeat ""
 
-touchFile path = System.Cmd.rawSystem "touch" [path]
-
-loadPaste path = 
-    do  bs1 <- BS.readFile path
-        bs2 <- BS.readFile (path ++ "_content")
+loadPaste id = 
+    do  bs1 <- BS.readFile (pasteDir ++ id)
+        bs2 <- BS.readFile (webDir ++ "pastes/plain/" ++ id ++ ".txt")
         return (byteStringToPaste bs1 bs2)
-        
-loadProcessedPaste path = 
-    do  bs1 <- BS.readFile path
-        ex <- doesFileExist (path ++ "_processed")
+
+loadProcessedPaste id = 
+    do  bs1 <- BS.readFile (pasteDir ++ id)
+        ex <- doesFileExist (webDir ++ "pastes/" ++ id ++ ".html")
         if ex then do
-            bs2 <- BS.readFile (path ++ "_processed")
+            bs2 <- BS.readFile (webDir ++ "pastes/" ++ id ++ ".html")
             return (byteStringToPaste bs1 bs2)
         else do
-            bs2 <- BS.readFile (path ++ "_content")
-            bs2' <- doProcessContent (byteStringToPaste bs1 bs2)
-            BS.writeFile (path ++ "_processed") bs2'
+            bs2 <- BS.readFile (webDir ++ "pastes/plain/" ++ id ++ ".txt")
+            bs2' <- doProcessContent id (byteStringToPaste bs1 bs2)
+            BS.writeFile (webDir ++ "pastes/" ++ id ++ ".html") bs2'
             return (byteStringToPaste bs1 bs2')
-
-savePaste path paste = 
-    do BS.writeFile path (pasteMetadataToByteString paste)
-       BS.writeFile (path ++ "_content") (content paste)
-       saveProcessedPaste path paste
+        
+savePaste id paste = 
+    do BS.writeFile (pasteDir ++ id) (pasteMetadataToByteString paste)
+       BS.writeFile (webDir ++ "pastes/plain/" ++ id ++ ".txt") (content paste)
+       processedContent <- doProcessContent id paste
+       BS.writeFile (webDir ++ "pastes/" ++ id ++ ".html") processedContent
        
 processContent isaTokenMap highlighting bs = 
     BS.unlines $ map processLine $ BS.lines $ BS.filter (/='\r') $
@@ -105,16 +108,16 @@ processContent isaTokenMap highlighting bs =
     where bsLineSpan = BS.pack "<span class=\"line\"></span>"
           processLine l = BS.append bsLineSpan l
 
-doProcessContent paste = 
+doProcessContent :: String -> Paste -> IO BS.ByteString
+doProcessContent id paste = 
     do isaTokenMap <- if highlighting paste == "isabelle" then
                           IsabelleTokens.buildTokenMap isaTokenFile
                       else
                           return Nothing
-       return $ processContent isaTokenMap (highlighting paste) (content paste)
-
-saveProcessedPaste path paste = 
-    do bs <- doProcessContent paste
-       BS.writeFile (path ++ "_processed") bs
+       let processed = processContent isaTokenMap (highlighting paste) (content paste)
+       let paste' = setContent paste processed
+       hlScript <- readTemplate "highlight_script" []
+       readTemplate "show_paste" (("id", BS.pack id) : pasteSubsts hlScript paste')
 
     
 genHighlightingOptions sel = BS.concat $ zipWith go highlightings highlightingNames
@@ -144,17 +147,17 @@ applyTemplateSubsts :: BS.ByteString -> [(String,BS.ByteString)] -> BS.ByteStrin
 applyTemplateSubsts bs substs = foldl (\t (l, r) -> BSS.replace l r t) bs substs'
     where substs' = map (\(l,r) -> (SBS.pack ("%{"++l++"}"), r)) substs ++ globalTemplateSubsts
 
-readTemplate :: String -> [(String, BS.ByteString)] -> CGI BS.ByteString
+readTemplate :: String -> [(String, BS.ByteString)] -> IO BS.ByteString
 readTemplate name substs = 
     do  let path = "./" ++ name ++ ".html"
-        ex <- liftIO (doesFileExist path)
+        ex <- doesFileExist path
         if not ex then
             if name == "template_not_found" then
                 return (BS.pack "")
             else
                 readTemplate "template_not_found" [("template", BS.pack name)]
         else do
-            bs <- liftIO (BS.readFile path)
+            bs <- BS.readFile path
             return (applyTemplateSubsts bs substs)
         
 
@@ -176,6 +179,17 @@ getInputDefault name dflt =
            
 getInputOption name = maybe False (const True) <$> getInput name
 
+createPaste :: BS.ByteString -> CGI CGIResult
+createPaste content =
+    do id <- liftIO findFreshId
+       title <- getInputDefault "title" "Untitled paste"
+       author <- getInputDefault "author" "Anonymous"
+       highlighting <- getInputDefault "highlighting" "getInputContentType"
+       time <- liftIO getCurrentTime
+       let paste = mkPaste title author highlighting time content
+       liftIO (savePaste id paste)
+       redirect (webRoot ++ id)
+
 showPaste id
     | not (all isAlphaNum id) = showCreatePasteForm Nothing
     | otherwise =
@@ -185,47 +199,29 @@ showPaste id
                showCreatePasteForm Nothing
            else do
                plain <- getInputOption "plain"
-               if autoTouchFiles then liftIO (touchFile pastePath) >> return () else return ()
                if plain then do
-                   bs <- liftIO (BS.readFile (pastePath ++ "_content"))
+                   bs <- liftIO (BS.readFile (webDir ++ "pastes/plain/" ++ id ++ ".txt"))
                    setHeader "Content-type" "text/plain; charset=utf-8"
                    outputFPS bs
                else do
-                   paste <- liftIO (loadProcessedPaste pastePath)
-                   hlScript <- readTemplate "highlight_script" []
-                   html <- readTemplate "show_paste" 
-                               (("id", BS.pack id) : pasteSubsts hlScript paste)
+                   paste <- liftIO (loadProcessedPaste id)
                    setHeader "Content-type" "text/html; charset=utf-8"
-                   outputFPS html
-                   
-
-createPaste :: BS.ByteString -> CGI CGIResult
-createPaste content =
-    do id <- liftIO findFreshId
-       title <- getInputDefault "title" "Untitled paste"
-       author <- getInputDefault "author" "Anonymous"
-       highlighting <- getInputDefault "highlighting" "getInputContentType"
-       time <- liftIO getCurrentTime
-       let paste = mkPaste title author highlighting time content
-       let pastePath = pasteDir ++ id
-       liftIO (savePaste pastePath paste)
-       redirect (webRoot ++ id)
-       
+                   outputFPS (content paste)
        
 showCreatePasteForm cloneId = 
     do 
        paste <- case cloneId of 
-                    Just id -> Just <$> liftIO (loadPaste (pasteDir ++ id))
+                    Just id -> Just <$> liftIO (loadPaste id)
                     Nothing -> return Nothing
        let hlOptions = genHighlightingOptions (highlighting <$> paste)
        let pTitle = BS.pack (maybe "" title paste)
        let pContent = maybe BS.empty content paste
-       tmpl <- readTemplate "new_paste" 
+       tmpl <- liftIO $ readTemplate "new_paste" 
                    [("title", pTitle), ("highlightings", hlOptions), 
                     ("content", pContent)]
        setHeader "Content-type" "text/html; charset=utf-8"
        outputFPS tmpl
- 
+
 cgiMain = 
     do  id <- getInput "id"
         paste <- getInputFPS "paste"
